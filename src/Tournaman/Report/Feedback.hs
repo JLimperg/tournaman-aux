@@ -7,6 +7,7 @@ module Tournaman.Report.Feedback
 
 import           Data.Foldable (find)
 import           Data.Maybe (fromJust)
+import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as LazyText
 import qualified Data.Text.IO as Text
@@ -72,8 +73,19 @@ roomData (Debates.Round _ rooms adjDistribution) adjs teams venues
 data RoomFeedbackSheets
     = RoomFeedbackSheets VenueName [SingleFeedbackSheet]
 
+
+data Pos = OG | OO | CG | CO
+  deriving (Read, Show, Eq, Ord)
+
+showPos :: Pos -> Text
+showPos OG = "ER"
+showPos OO = "EO"
+showPos CG = "SR"
+showPos CO = "SO"
+
+
 data SingleFeedbackSheet
-    = TeamForChair TeamName AdjudicatorName
+    = TeamForChair TeamName Pos AdjudicatorName
     | ChairForWing AdjudicatorName {- chair -} AdjudicatorName {- wing -}
     | WingForChair AdjudicatorName {- wing -} AdjudicatorName {- chair -}
   deriving (Read, Show, Eq, Ord)
@@ -84,7 +96,9 @@ roomSheets (Room venue teams adjs)
     $ teamForChair ++ chairForWings ++ wingsForChair
   where
     teamForChair
-        = [ TeamForChair team (head adjs) | team <- teams ]
+        = [ TeamForChair team pos (head adjs)
+          | (team, pos) <- zip teams [OG, OO, CG, CO]
+          ]
     chairForWings
         = [ ChairForWing (head adjs) wing | wing <- tail adjs ]
     wingsForChair
@@ -122,10 +136,11 @@ readTemplates
 -- Rendering
 
 singleContext :: SingleFeedbackSheet -> Context
-singleContext (TeamForChair team chair) key = protectText $
+singleContext (TeamForChair team pos chair) key = protectText $
     case key of
       "chair" -> unAdjudicatorName chair
       "team"  -> unTeamName team
+      "pos"   -> showPos pos
       _       -> error $ "unexpected template key: " ++ Text.unpack key
 
 singleContext (ChairForWing chair wing) key =
@@ -168,9 +183,9 @@ renderRoom templates round r
     renderSingleSheet sheet = render (tpl templates) ctx
       where
         tpl = case sheet of
-            TeamForChair _ _ -> teamForChair
-            ChairForWing _ _ -> chairForWing
-            WingForChair _ _ -> wingForChair
+            TeamForChair {} -> teamForChair
+            ChairForWing {} -> chairForWing
+            WingForChair {} -> wingForChair
         ctx = singleContext sheet
 
 
