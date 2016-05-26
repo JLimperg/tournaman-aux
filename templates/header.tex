@@ -1,0 +1,84 @@
+\documentclass{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage[a4paper, top=3cm, bottom=1cm, left=2cm, right=2cm]{geometry}
+\usepackage{latexsym}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage{color}
+\pagestyle{fancy}
+
+
+\newcommand{\questionthree}[4]{%
+#4%
+
+\medskip%
+
+{%
+  \centering%
+  \begin{tabular}{>{\centering}p{0.27\textwidth}%
+                  >{\centering}p{0.27\textwidth}%
+                  >{\centering\arraybackslash}p{0.27\textwidth}}%
+    $$\Box$$ & $$\Box$$ & $$\Box$$ \\%
+    #1 & #2 & #3%
+  \end{tabular}%
+}%
+}
+
+\newcommand{\questionfour}[5]{%
+#5
+
+\medskip%
+
+{%
+  \centering%
+  \begin{tabular}{>{\centering}p{0.22\textwidth}%
+                  >{\centering}p{0.22\textwidth}%
+                  >{\centering}p{0.22\textwidth}%
+                  >{\centering\arraybackslash}p{0.19\textwidth}}%
+    $$\Box$$ & $$\Box$$ & $$\Box$$ & $$\Box$$ \\%
+    #1 & #2 & #3 & #4%
+  \end{tabular}%
+}%
+}
+
+\newcommand{\questionfive}[6]{%
+#6%
+
+\medskip%
+
+{%
+  \centering%
+  \begin{tabular}{>{\centering}p{0.17\textwidth}%
+                  >{\centering}p{0.17\textwidth}%
+                  >{\centering}p{0.17\textwidth}%
+                  >{\centering}p{0.17\textwidth}%
+                  >{\centering\arraybackslash}p{0.17\textwidth}}%
+    $$\Box$$ & $$\Box$$ & $$\Box$$ & $$\Box$$ & $$\Box$$ \\%
+    #1 & #2 & #3 & #4 & #5%
+  \end{tabular}%
+}%
+}
+
+\newcommand{\strengthsandweaknesses}[1]{%
+{%
+  \centering%
+  \begin{tabular}{|p{0.97\textwidth}|}%
+    \hline%
+    \bigskip \\[#1]%
+    \hline%
+  \end{tabular}%
+}%
+}
+
+\newcommand{\feedbackfromfor}[2]{%
+\begin{tabular}{ll}%
+  Feedback \textbf{von}: & #1 \\%
+  Feedback \textbf{für}: & \textbf{#2}%
+\end{tabular}%
+}
+
+\begin{document}
+
+\setlength{\parindent}{0pt}

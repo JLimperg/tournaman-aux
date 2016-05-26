@@ -1,0 +1,38 @@
+name:                tournaman-aux
+version:             0.1.0.0
+synopsis:            Simple project template from stack
+description:         Please see README.md
+homepage:            https://github.com/jlimperg/tournaman-aux#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Jannis Limperg
+maintainer:          jannis@limperg.de
+copyright:           (C) 2015 Jannis Limperg
+category:            Education
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable tournaman-aux
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base
+                     , containers
+                     , HaTeX
+                     , microlens
+                     , semigroups
+                     , split
+                     , text
+                     , template
+                     , xml
+  other-modules:       Tournaman.Parser.Adjudicators
+                     , Tournaman.Parser.Adjudicators.Types
+                     , Tournaman.Parser.Common
+                     , Tournaman.Parser.Common.Types
+                     , Tournaman.Parser.Debates
+                     , Tournaman.Parser.Debates.Types
+                     , Tournaman.Parser.Teams
+                     , Tournaman.Parser.Teams.Types
+                     , Tournaman.Parser.Venues
+                     , Tournaman.Report.Feedback
+  ghc-options:         -Wall -fno-warn-name-shadowing
