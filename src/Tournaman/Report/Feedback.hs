@@ -6,12 +6,15 @@ module Tournaman.Report.Feedback
 ) where
 
 import           Data.Foldable (find)
-import           Data.Maybe (fromJust)
+import           Data.Function (on)
+import           Data.List (sortBy)
+import           Data.Maybe (fromJust, fromMaybe)
+import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as LazyText
 import qualified Data.Text.IO as Text
-import           Data.Text.Template (Template, Context, template, render)
+import           Data.Text.Template (Template, template, render)
 import           Text.LaTeX.Base.Syntax (protectText)
 
 import           Tournaman.Parser.Common.Types
@@ -70,10 +73,6 @@ roomData (Debates.Round _ rooms adjDistribution) adjs teams venues
     lookupVenueName venueID = snd $ unsafeFind ((== venueID) . fst) venues
 
 
-data RoomFeedbackSheets
-    = RoomFeedbackSheets VenueName [SingleFeedbackSheet]
-
-
 data Pos = OG | OO | CG | CO
   deriving (Read, Show, Eq, Ord)
 
@@ -85,24 +84,43 @@ showPos CO = "SO"
 
 
 data SingleFeedbackSheet
-    = TeamForChair TeamName Pos AdjudicatorName
-    | ChairForWing AdjudicatorName {- chair -} AdjudicatorName {- wing -}
-    | WingForChair AdjudicatorName {- wing -} AdjudicatorName {- chair -}
+    = TeamForChair VenueName TeamName Pos AdjudicatorName
+    | ChairForWing VenueName AdjudicatorName {- chair -} AdjudicatorName {- wing -}
+    | WingForChair VenueName AdjudicatorName {- wing -} AdjudicatorName {- chair -}
   deriving (Read, Show, Eq, Ord)
 
-roomSheets :: Room -> RoomFeedbackSheets
+compareSheetsByType :: SingleFeedbackSheet -> SingleFeedbackSheet -> Ordering
+compareSheetsByType TeamForChair {} TeamForChair {} = EQ
+compareSheetsByType TeamForChair {} _               = LT
+compareSheetsByType ChairForWing {} TeamForChair {} = GT
+compareSheetsByType ChairForWing {} ChairForWing {} = EQ
+compareSheetsByType ChairForWing {} _               = LT
+compareSheetsByType WingForChair {} WingForChair {} = EQ
+compareSheetsByType WingForChair {} _               = GT
+
+
+roomSheets :: Room -> [SingleFeedbackSheet]
 roomSheets (Room venue teams adjs)
-    = RoomFeedbackSheets venue
-    $ teamForChair ++ chairForWings ++ wingsForChair
+    = teamForChair ++ chairForWings ++ wingsForChair
   where
     teamForChair
-        = [ TeamForChair team pos (head adjs)
+        = [ TeamForChair venue team pos (head adjs)
           | (team, pos) <- zip teams [OG, OO, CG, CO]
           ]
     chairForWings
-        = [ ChairForWing (head adjs) wing | wing <- tail adjs ]
+        = [ ChairForWing venue (head adjs) wing | wing <- tail adjs ]
     wingsForChair
-        = [ WingForChair wing (head adjs) | wing <- tail adjs ]
+        = [ WingForChair venue wing (head adjs) | wing <- tail adjs ]
+
+
+roundSheets :: [Room] -> [SingleFeedbackSheet]
+roundSheets = sortBy compareSheets . concatMap roomSheets
+  where
+    compareSheets = compareSheetsByType <> (compare `on` venue)
+
+    venue (TeamForChair v _ _ _) = v
+    venue (ChairForWing v _ _) = v
+    venue (WingForChair v _ _) = v
 
 
 -------------------------------------------------------------------------------
@@ -112,7 +130,6 @@ data Templates
     = Templates
     { header :: Template
     , footer :: Template
-    , room :: Template
     , teamForChair :: Template
     , chairForWing :: Template
     , wingForChair :: Template
@@ -126,7 +143,6 @@ readTemplates
     =   Templates
     <$> readTemplate "templates/header.tex"
     <*> readTemplate "templates/footer.tex"
-    <*> readTemplate "templates/room.tex"
     <*> readTemplate "templates/team_chair.tex"
     <*> readTemplate "templates/chair_wing.tex"
     <*> readTemplate "templates/wing_chair.tex"
@@ -135,66 +151,85 @@ readTemplates
 -------------------------------------------------------------------------------
 -- Rendering
 
-singleContext :: SingleFeedbackSheet -> Context
-singleContext (TeamForChair team pos chair) key = protectText $
+extendContext
+    :: (Text -> Maybe Text)
+    -> (Text -> Maybe Text)
+    -> Text -> Maybe Text
+extendContext f g x
+    = case f x of
+        Just fx -> Just fx
+        Nothing -> g x
+
+
+maybeContextToContext :: (Text -> Maybe Text) -> Text -> Text
+maybeContextToContext f x
+    = fromMaybe (error $ "unexpected template parameter: " ++ Text.unpack x) (f x)
+
+
+roomContext
+    :: RoundID
+    -> VenueName
+    -> Text
+    -> Maybe Text
+roomContext round room key = protectText <$>
     case key of
-      "chair" -> unAdjudicatorName chair
-      "team"  -> unTeamName team
-      "pos"   -> showPos pos
-      _       -> error $ "unexpected template key: " ++ Text.unpack key
-
-singleContext (ChairForWing chair wing) key =
-    chairWingContext chair wing key
-
-singleContext (WingForChair wing chair) key =
-    chairWingContext chair wing key
+      "round" -> Just . Text.pack . show . unRoundID $ round
+      "room"  -> Just . protectText . unVenueName $ room
+      _       -> Nothing
 
 
 chairWingContext
     :: AdjudicatorName {- chair -}
     -> AdjudicatorName {- wing -}
-    -> Context
-chairWingContext chair wing key = protectText $
+    -> Text
+    -> Maybe Text
+chairWingContext chair wing key = protectText <$>
     case key of
-      "chair" -> unAdjudicatorName chair
-      "wing"  -> unAdjudicatorName wing
-      _       -> error $ "unexpected template key: " ++ Text.unpack key
+      "chair" -> Just . unAdjudicatorName $ chair
+      "wing"  -> Just . unAdjudicatorName $ wing
+      _       -> Nothing
 
 
-roomContext
-    :: Int {- round -}
-    -> VenueName
-    -> Context
-roomContext round room key = protectText $
-    case key of
-      "round" -> Text.pack $ show round
-      "room"  -> protectText $ unVenueName room
-      _       -> error $ "unexpected template key: " ++ Text.unpack key
+singleContext
+    :: RoundID
+    -> SingleFeedbackSheet
+    -> Text
+    -> Maybe Text
+singleContext round (TeamForChair room team pos chair)
+    = extendContext (roomContext round room)
+    $ \key -> protectText <$>
+        case key of
+          "chair" -> Just . unAdjudicatorName $ chair
+          "team"  -> Just . unTeamName $ team
+          "pos"   -> Just . showPos $ pos
+          _       -> Nothing
+singleContext round (ChairForWing room chair wing)
+    = extendContext (roomContext round room) $ chairWingContext chair wing
+singleContext round (WingForChair room wing chair)
+    = extendContext (roomContext round room) $ chairWingContext chair wing
 
 
-renderRoom :: Templates -> Int -> Room -> LazyText.Text
-renderRoom templates round r
-    = LazyText.unlines
-    $ render (room templates) (roomContext round venue)
-    : map renderSingleSheet sheets
+
+
+data SheetKind = KindTeamChair | KindChairWing | KindWingChair
+  deriving (Read, Show, Eq, Ord)
+
+
+renderRound :: Templates -> RoundID -> [Room] -> LazyText.Text
+renderRound templates round rs
+    =  LazyText.unlines
+    $  [ render (header templates) id ]
+    ++ map renderSingle (roundSheets rs)
+    ++ [ render (footer templates) id ]
   where
-    (RoomFeedbackSheets venue sheets) = roomSheets r
-
-    renderSingleSheet sheet = render (tpl templates) ctx
+    renderSingle :: SingleFeedbackSheet -> LazyText.Text
+    renderSingle sheet = render (tpl templates) ctx
       where
+        ctx = maybeContextToContext $ singleContext round sheet
         tpl = case sheet of
             TeamForChair {} -> teamForChair
             ChairForWing {} -> chairForWing
             WingForChair {} -> wingForChair
-        ctx = singleContext sheet
-
-
-renderRound :: Templates -> Int -> [Room] -> LazyText.Text
-renderRound templates round rs
-    =  LazyText.unlines
-    $  [ render (header templates) id ]
-    ++ map (renderRoom templates round) rs
-    ++ [ render (footer templates) id ]
 
 
 -------------------------------------------------------------------------------
@@ -203,7 +238,7 @@ renderRound templates round rs
 
 feedbackSheets
     :: Templates
-    -> Int
+    -> RoundID
     -> Debates.Round
     -> [Adj.Adjudicator]
     -> [Teams.Team]

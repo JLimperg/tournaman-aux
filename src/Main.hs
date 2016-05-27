@@ -3,7 +3,7 @@ import qualified Data.Text.IO as Text
 import           System.Environment
 import           System.IO
 
-import           Tournaman.Parser.Common (Result)
+import           Tournaman.Parser.Common (Result, RoundID(..))
 import           Tournaman.Parser.Adjudicators (parseAdjudicators)
 import           Tournaman.Parser.Debates (parseDebates)
 import           Tournaman.Parser.Venues (parseVenues)
@@ -43,4 +43,4 @@ main = do
     tpls <- readTemplates
 
     Text.putStr . LazyText.toStrict $
-      feedbackSheets tpls (read round) debates adjs teams venues
+      feedbackSheets tpls (RoundID $ read round) debates adjs teams venues

@@ -11,6 +11,9 @@ newtype TeamID = TeamID { unTeamID :: Int }
 newtype VenueID = VenueID { unVenueID :: Int }
   deriving (Read, Show, Eq, Ord)
 
+newtype RoundID = RoundID { unRoundID :: Int }
+  deriving (Read, Show, Eq, Ord)
+
 newtype AdjudicatorID = AdjudicatorID { unAdjudicatorID :: Int }
   deriving (Read, Show, Eq, Ord)
 
