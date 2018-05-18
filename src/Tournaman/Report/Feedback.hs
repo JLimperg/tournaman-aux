@@ -116,7 +116,7 @@ roomSheets (Room venue teams adjs)
 roundSheets :: [Room] -> [SingleFeedbackSheet]
 roundSheets = sortBy compareSheets . concatMap roomSheets
   where
-    compareSheets = compareSheetsByType <> (compare `on` venue)
+    compareSheets = (compare `on` venue) <> compareSheetsByType
 
     venue (TeamForChair v _ _ _) = v
     venue (ChairForWing v _ _) = v
