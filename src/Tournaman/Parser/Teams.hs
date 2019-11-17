@@ -23,7 +23,8 @@ parseTeam team = do
     teamName <- TeamName <$> findAttrText "name" team
     id <- TeamID <$> findAttr "ident" team
     institutions <- map (Institution . strContent) <$> findChildren "home" team
-    [speaker1, speaker2] <- findNChildren 2 "member" team
+    speakers <- findNChildren 2 "member" team
+    let [speaker1, speaker2] = speakers
     speaker1Name <- SpeakerName <$> findAttrText "name" speaker1
     speaker2Name <- SpeakerName <$> findAttrText "name" speaker2
     return $ Team id teamName institutions speaker1Name speaker2Name

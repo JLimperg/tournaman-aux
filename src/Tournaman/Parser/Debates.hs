@@ -34,7 +34,8 @@ parseTeam :: XML.Element -> Result Team
 parseTeam team = do
   id <- TeamID <$> findAttr "id" team
   rank <- Rank <$> findAttr "rankpts" team
-  [speaker1, speaker2] <- findNChildren 2 "speaker" team
+  speakers <- findNChildren 2 "speaker" team
+  let [speaker1, speaker2] = speakers
   speaks1 <- Speaks <$> findAttr "points" speaker1
   speaks2 <- Speaks <$> findAttr "points" speaker2
   return $ Team id rank speaks1 speaks2

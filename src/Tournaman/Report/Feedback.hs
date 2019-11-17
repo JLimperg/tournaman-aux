@@ -9,7 +9,6 @@ import           Data.Foldable (find)
 import           Data.Function (on)
 import           Data.List (sortBy)
 import           Data.Maybe (fromJust, fromMaybe)
-import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy as LazyText
